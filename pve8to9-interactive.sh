@@ -58,7 +58,7 @@ run() {
   local rc=${PIPESTATUS[0]}
   if [[ $rc -ne 0 ]]; then
     warn "Command failed with exit code $rc"
-  end
+  fi
   return $rc
 }
 
