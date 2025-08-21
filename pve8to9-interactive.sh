@@ -82,19 +82,19 @@ fi
 
 # ------------------------- Resume path only -------------------------
 if [[ "$RESUME_MODE" -eq 1 ]]; then
-  # Step 9: Modernize repository sources (only if supported)
-  if ask "Step 9: Modernize repository sources (apt modernize-sources)?"; then
+  # Step 10: Modernize repository sources (only if supported)
+  if ask "Step 10: Modernize repository sources (apt modernize-sources)?"; then
     if apt -o APT::Cmd::Disable-Script-Warning=true help 2>/dev/null | grep -q "modernize-sources"; then
       run "Modernize sources" apt modernize-sources || true
     else
       warn "APT $(apt -v | head -n1) does not support 'modernize-sources'; skipping."
     fi
   else
-    log "Skipped Step 9."
+    log "Skipped Step 10."
   fi
 
-  # Step 10: Final reboot
-  if ask "Step 10: Reboot now to complete the upgrade?"; then
+  # Step 11: Final reboot
+  if ask "Step 11: Reboot now to complete the upgrade?"; then
     log "Final reboot at user request."
     rm -f "$RESUME_MARK"
     reboot
@@ -108,15 +108,23 @@ fi
 
 # ------------------------- Normal flow (Steps 1–8) -------------------------
 
-# Step 1: Remove systemd-boot?
-if ask "Step 1: Remove systemd-boot?"; then
-  run "Removing systemd-boot (ok if not installed)..." apt-get remove -y systemd-boot || true
+# Step 1: Run PVE upgrade checker (REVIEW)
+if ask "Step 1: Run PVE upgrade checker (pve8to9 --full)?"; then
+  run "Running pve8to9 --full (pre-switch)" pve8to9 --full || true
+  pause_review
 else
   log "Skipped Step 1."
 fi
 
-# Step 2: Install amd64-microcode and add non-free-firmware
-if ask "Step 2: Install amd64-microcode (and add 'non-free-firmware' to Debian repos)?"; then
+# Step 2: Remove systemd-boot?
+if ask "Step 2: Remove systemd-boot?"; then
+  run "Removing systemd-boot (ok if not installed)..." apt-get remove -y systemd-boot || true
+else
+  log "Skipped Step 3."
+fi
+
+# Step 3: Install amd64-microcode and add non-free-firmware
+if ask "Step 3: Install amd64-microcode (and add 'non-free-firmware' to Debian repos)?"; then
   if [[ -f /etc/apt/sources.list ]]; then
     backup_file /etc/apt/sources.list
     run "Adding 'non-free-firmware' to active deb lines" \
@@ -125,28 +133,28 @@ if ask "Step 2: Install amd64-microcode (and add 'non-free-firmware' to Debian r
   run "apt update" apt-get update
   run "Install amd64-microcode" apt-get install -y amd64-microcode || true
 else
-  log "Skipped Step 2."
+  log "Skipped Step 3."
 fi
 
-# Step 3: Install all available PVE 8 updates
-if ask "Step 3: Install all available PVE 8 updates?"; then
+# Step 4: Install all available PVE 8 updates
+if ask "Step 4: Install all available PVE 8 updates?"; then
   run "apt update" apt-get update
   run "apt dist-upgrade -y" apt-get dist-upgrade -y
   run "Show PVE version" pveversion || true
 else
-  log "Skipped Step 3."
-fi
-
-# Step 4: Run PVE upgrade checker (REVIEW)
-if ask "Step 4: Run PVE upgrade checker (pve8to9 --full)?"; then
-  run "Running pve8to9 --full (pre-switch)" pve8to9 --full || true
-  pause_review
-else
   log "Skipped Step 4."
 fi
 
-# Step 5: Add/update sources for Trixie & PVE9
-if ask "Step 5: Add/adjust Debian & Proxmox sources for Trixie/PVE9?"; then
+# Step 5: Run PVE upgrade checker (REVIEW)
+if ask "Step 5: Run PVE upgrade checker (pve8to9 --full)?"; then
+  run "Running pve8to9 --full (pre-switch)" pve8to9 --full || true
+  pause_review
+else
+  log "Skipped Step 5."
+fi
+
+# Step 6: Add/update sources for Trixie & PVE9
+if ask "Step 6: Add/adjust Debian & Proxmox sources for Trixie/PVE9?"; then
   ensure_keyring
   if [[ -f /etc/apt/sources.list ]]; then
     backup_file /etc/apt/sources.list
@@ -174,42 +182,42 @@ EOF_PVE
   log "Wrote /etc/apt/sources.list.d/proxmox.sources"
   run "apt update" apt-get update || true
 else
-  log "Skipped Step 5."
-fi
-
-# Step 6: Run PVE upgrade checker again (REVIEW)
-if ask "Step 6: Run PVE upgrade checker again (pve8to9 --full)?"; then
-  run "Running pve8to9 --full (post-sources)" pve8to9 --full || true
-  pause_review
-else
   log "Skipped Step 6."
 fi
 
-# Step 7: Upgrade to Debian Trixie & PVE9
-if ask "Step 7: Upgrade to Debian Trixie & PVE9?"; then
-  run "apt update" apt-get update
-  run "apt dist-upgrade -y" apt-get dist-upgrade -y
+# Step 7: Run PVE upgrade checker again (REVIEW)
+if ask "Step 7: Run PVE upgrade checker again (pve8to9 --full)?"; then
+  run "Running pve8to9 --full (post-sources)" pve8to9 --full || true
+  pause_review
 else
   log "Skipped Step 7."
 fi
 
-# Step 8: Post-install checker (REVIEW) -> create marker and reboot (or remind)
-if ask "Step 8: Run post-install checker (pve8to9 --full)?"; then
-  run "Running final pve8to9 --full" pve8to9 --full || true
-  pause_review
+# Step 8: Upgrade to Debian Trixie & PVE9
+if ask "Step 8: Upgrade to Debian Trixie & PVE9?"; then
+  run "apt update" apt-get update
+  run "apt dist-upgrade -y" apt-get dist-upgrade -y
 else
   log "Skipped Step 8."
 fi
 
+# Step 9: Post-install checker (REVIEW) -> create marker and reboot (or remind)
+if ask "Step 9: Run post-install checker (pve8to9 --full)?"; then
+  run "Running final pve8to9 --full" pve8to9 --full || true
+  pause_review
+else
+  log "Skipped Step 9."
+fi
+
 echo
-if ask "Reboot now to continue with Step 9 on the upgraded system (recommended)?"; then
+if ask "Reboot now to continue with Step 10 on the upgraded system (recommended)?"; then
   log "Creating resume marker at $RESUME_MARK and rebooting..."
   : > "$RESUME_MARK"
   sync
   reboot
   exit 0
 else
-  warn "Please reboot before Step 9. When the node is back, re-run this script to resume at Step 9."
+  warn "Please reboot before Step 10. When the node is back, re-run this script to resume at Step 10."
   log "Creating resume marker at $RESUME_MARK (manual reboot pending)"
   : > "$RESUME_MARK"
   sync
